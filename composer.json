@@ -10,10 +10,16 @@
     "autoload": {
         "files": [ "command.php" ]
     },
+    "autoload-dev": {
+        "files": ["tests/utils.php"]
+    },
     "require": {
         "wp-cli/wp-cli": "^1.1.0"
     },
     "require-dev": {
         "behat/behat": "~2.5"
+    },
+    "scripts": {
+        "test": "bin/install-package-tests.sh && bin/test.sh"
     }
 }
