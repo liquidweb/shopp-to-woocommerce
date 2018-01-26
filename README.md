@@ -1,7 +1,6 @@
-liquidweb/shopp-to-woocommerce
-==============================
+# Shopp to WooCommerce Migrations
 
-WP-CLI package for migrating Shopp sites into WooCommerce
+WP-CLI package for migrating Shopp sites into WooCommerce.
 
 [![Build Status](https://travis-ci.org/liquidweb/shopp-to-woocommerce.svg?branch=master)](https://travis-ci.org/liquidweb/shopp-to-woocommerce)
 
