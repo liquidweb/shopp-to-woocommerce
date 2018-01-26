@@ -33,32 +33,14 @@ class ProductFactory {
 		$args  = wp_parse_args( $args, [
 			'name'        => $faker->text,
 			'slug'        => $faker->slug,
-			'publish'     => [
-				'flag'        => true,
-				'publishtime' => [
-					'month'    => date( 'n' ),
-					'day'      => date( 'j' ),
-					'year'     => date( 'Y' ),
-					'hour'     => date( 'G' ),
-					'minute'   => date( 'm' ),
-					'meridian' => date( 'A' ),
-				],
-			],
 			'description' => $faker->paragraphs( 2, true ),
 			'summary'     => $faker->paragraph,
 			'specs'       => [
 				'Some spec' => $faker->text,
 			],
 			'single'      => [
-				'option'       => [],
 				'type'         => 'Shipped',
-				'taxed'        => false,
 				'price'        => $faker->randomFloat( 2, 1 ),
-				'sale'         => [],
-				'shipping'     => [],
-				'inventory'    => [],
-				'donation'     => [],
-				'subscription' => [],
 			],
 		] );
 

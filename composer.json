@@ -11,7 +11,10 @@
         "files": [ "command.php" ]
     },
     "autoload-dev": {
-        "classmap": ["tests/factories/"],
+        "classmap": [
+            "tests/factories/",
+            "vendor/wp-cli/wp-cli/"
+        ],
         "files": ["tests/utils.php"]
     },
     "require": {
