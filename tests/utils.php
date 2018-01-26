@@ -78,3 +78,14 @@ function install_and_activate_plugin( $plugin, $name = '' ) {
 		throw new ErrorException( "\033[0;33mUnable to activate {$name}:\033[0;m {$activated->get_error_message()}" );
 	}
 }
+
+/**
+ * Output a Shopp error to the console.
+ *
+ * @param ShoppError $error The ShoppError to display.
+ */
+function print_shopp_error( $error ) {
+	if ( 512 <= $error->level ) {
+		echo $error->message();
+	}
+}
