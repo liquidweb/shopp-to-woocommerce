@@ -34,6 +34,38 @@ class Command extends WP_CLI_Command {
 	}
 
 	/**
+	 * Migrate all taxonomy terms from Shopp to WooCommerce.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *   wp shopp-to-woocommerce migrate-terms
+	 *
+	 * @global $wpdb
+	 *
+	 * @subcommand migrate-terms
+	 */
+	public function migrate_terms() {
+		global $wpdb;
+
+		$taxonomies = array(
+			'shopp_category' => 'product_cat',
+			'shopp_tag'      => 'product_tag',
+		);
+
+		// Loop through each taxonomy to be converted.
+		foreach ( $taxonomies as $old => $new ) {
+			$count = wp_count_terms( $old );
+
+			WP_CLI::log( sprintf( 'Migrating %d terms from %s to %s.', $count, $old, $new ) );
+
+			$wpdb->update( $wpdb->term_taxonomy, array( 'taxonomy' => $new ), array( 'taxonomy' => $old ) );
+
+			clean_taxonomy_cache( $old );
+			clean_taxonomy_cache( $new );
+		}
+	}
+
+	/**
 	 * Migrate products from Shopp to WooCommerce.
 	 *
 	 * ## EXAMPLES
@@ -57,8 +89,6 @@ class Command extends WP_CLI_Command {
 			$query->the_post();
 
 			$product = shopp_product( get_the_ID() );
-			print_r( $product );
-			die('hard');
 			$this->migrate_single_product( $product )->save();
 			$counter++;
 
