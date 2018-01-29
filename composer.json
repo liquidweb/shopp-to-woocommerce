@@ -15,7 +15,16 @@
             "tests/factories/",
             "vendor/wp-cli/wp-cli/"
         ],
-        "files": ["tests/utils.php"]
+        "files": [
+            "tests/utils.php",
+            "tests/wp-cli-utils.php"
+        ],
+        "psr-0": {
+            "WP_CLI": "vendor/wp-cli/wp-cli/php"
+        },
+        "psr-4": {
+            "": "vendor/wp-cli/wp-cli/php"
+        }
     },
     "require": {
         "wp-cli/wp-cli": "^1.1.0"

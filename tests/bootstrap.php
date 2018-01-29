@@ -7,6 +7,7 @@
  */
 
 use Tests\Utils as Utils;
+use WP_CLI\Loggers\Quiet as Logger;
 
 $_tests_dir = getenv( 'WP_TESTS_DIR' );
 if ( ! $_tests_dir ) {
@@ -37,6 +38,11 @@ add_action( 'before_activate_shopp/Shopp.php', function () {
 try {
 	Utils\install_and_activate_plugin( 'shopp/Shopp.php', 'Shopp' );
 	Utils\install_and_activate_plugin( 'woocommerce/woocommerce.php', 'WooCommerce' );
+
+	// Shopp requires the 'init' action to trigger its loading.
+	do_action( 'init' );
+
+	WP_CLI::set_logger( new Logger() );
 
 } catch ( ErrorException $e ) {
 	echo esc_html( PHP_EOL . $e->getMessage() );
