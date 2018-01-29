@@ -72,7 +72,11 @@ class ProductsTest extends WP_UnitTestCase {
 			$woo->get_date_modified()->getTimestamp(),
 			'Product modification timestamp does not match.'
 		);
-		// status
+		$this->assertEquals(
+			$shopp->status,
+			get_post_status( $woo->get_id() ),
+			'The post status should not change.'
+		);
 		$this->assertEquals(
 			Helpers\str_to_bool( $shopp->featured ),
 			$woo->get_featured(),

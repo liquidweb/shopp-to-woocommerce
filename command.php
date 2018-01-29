@@ -1,15 +1,21 @@
 <?php
+/**
+ * Bootstrap the Shopp to WooCommerce WP-CLI package.
+ *
+ * @package LiquidWeb\ShoppToWooCommerce
+ * @author  Liquid Web
+ */
+
+namespace LiquidWeb\ShoppToWooCommerce;
+
+use WP_CLI;
 
 if ( ! class_exists( 'WP_CLI' ) ) {
 	return;
 }
 
-/**
- * Says "Hello World" to new users
- *
- * @when before_wp_load
- */
-$hello_world_command = function() {
-	WP_CLI::success( "Hello world." );
-};
-WP_CLI::add_command( 'hello-world', $hello_world_command );
+// Load command dependencies.
+require_once __DIR__ . '/src/class-command.php';
+require_once __DIR__ . '/src/helpers.php';
+
+WP_CLI::add_command( 'shopp-to-woocommerce', Command::class );
