@@ -23,5 +23,5 @@ function str_to_bool( $value ) {
 
 	$affirmative = [ 'yes', '1', 'true', 'on' ];
 
-	return in_array( $affirmative, strtolower( trim( $value ) ), true );
+	return in_array( strtolower( trim( $value ) ), $affirmative, true );
 }
