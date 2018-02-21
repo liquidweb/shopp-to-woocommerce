@@ -37,10 +37,10 @@ add_action( 'before_activate_shopp/Shopp.php', function () {
 
 try {
 	Utils\install_and_activate_plugin( 'shopp/Shopp.php', 'Shopp' );
-	Utils\install_and_activate_plugin( 'woocommerce/woocommerce.php', 'WooCommerce' );
+	new ShoppInstallation();
+	do_action( 'shopp_activate' );
 
-	// Shopp requires the 'init' action to trigger its loading.
-	do_action( 'init' );
+	Utils\install_and_activate_plugin( 'woocommerce/woocommerce.php', 'WooCommerce' );
 
 	WP_CLI::set_logger( new Logger() );
 
