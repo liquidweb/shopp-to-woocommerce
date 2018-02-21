@@ -21,6 +21,98 @@ use WP_Query;
 class Command extends WP_CLI_Command {
 
 	/**
+	 * Analyze all of the products in the Shopp database to determine what needs to be migrated.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *   wp shopp-to-woocommerce analyze
+	 */
+	public function analyze() {
+		global $wpdb;
+
+		$products = new ProductCollection();
+		$products->load( [
+			'published' => false,
+		] );
+		$products->rewind();
+
+		// Iterate over products and get details about them.
+		$price_types        = [
+			'Shipped'  => 0,
+			'Virtual'  => 0,
+			'Download' => 0,
+			'Donation' => 0,
+			'N/A'      => 0,
+		];
+		$product_attributes = [
+			'addons'     => 0,
+			'dimensions' => 0,
+		];
+
+		$progress = Utils\make_progress_bar( 'Scanning Shopp products', $products->total );
+
+		while ( $products->valid() ) {
+			$product = $products->current();
+
+			$product->load_data();
+
+			// Get details about the product pricing schemes.
+			foreach ( $product->prices as $price ) {
+				$price_types[ $price->type ]++;
+
+				// Don't count dimensions that are just weight = 0, as that's a default.
+				if ( ! empty( $price->dimensions ) && 0 !== (int) $price->dimensions['weight'] ) {
+					$product_attributes['dimensions']++;
+				}
+			}
+
+			// Products with add-ons.
+			if ( Helpers\str_to_bool( $product->addons ) ) {
+				$product_attributes['addons']++;
+			}
+
+			$progress->tick();
+			$products->next();
+
+			if ( ! $products->valid() && $products->pages > $products->page ) {
+				$products->load( [
+					'page'      => $products->page +1,
+					'published' => false,
+				] );
+				$products->rewind();
+			}
+		}
+
+		$progress->finish();
+
+		$components = [
+			'All products'          => $products->total,
+			'Shipped prices'        => $price_types['Shipped'],
+			'Virtual prices'        => $price_types['Virtual'],
+			'Download prices'       => $price_types['Download'],
+			'Donation prices'       => $price_types['Donation'],
+			'Disabled prices'       => $price_types['N/A'],
+			'Product categories'    => count( shopp_product_categories() ),
+			'Product tags'          => count( shopp_product_tags() ),
+			'Products with add-ons' => $product_attributes['addons'],
+			'Product dimensions'    => $product_attributes['dimensions'],
+		];
+
+		// Assemble a table of results.
+		$table = [];
+
+		foreach ( $components as $label => $count ) {
+			$table[] = [
+				'component' => $label,
+				'records'   => (int) $count,
+				'required'  => $count ? '   ✔' : '',
+			];
+		}
+
+		Utils\format_items( 'table', $table, [ 'component', 'records', 'required' ] );
+	}
+
+	/**
 	 * Migrate all content from Shopp to WooCommerce.
 	 *
 	 * This command acts as a single step for each of the other commands, using default settings.
