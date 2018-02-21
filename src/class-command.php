@@ -8,8 +8,11 @@
 
 namespace LiquidWeb\ShoppToWooCommerce;
 
+use LiquidWeb\ShoppToWooCommerce\Helpers as Helpers;
+use ProductCollection;
 use ShoppProduct;
 use WC_Product;
+use WC_Product_Factory;
 use WP_CLI;
 use WP_CLI_Command;
 use WP_CLI\Utils as Utils;
@@ -200,9 +203,14 @@ class Command extends WP_CLI_Command {
 	protected function migrate_single_product( $product ) {
 		WP_CLI::debug( sprintf( 'Migrating product: %s.', $product->name ) );
 
+		// Determine the product type.
+		$product_type = 'on' === $product->variants ? 'variable' : 'simple';
+		$classname    = WC_Product_Factory::get_classname_from_product_type( $product_type );
+
+		// Update the post type populate the new product.
 		set_post_type( $product->id, 'product' );
 
-		$new = new WC_Product( $product->id );
+		$new = new $classname( $product->id );
 
 		$new->set_name( $product->name );
 		$new->set_slug( $product->slug );
