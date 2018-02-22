@@ -44,6 +44,7 @@ class ProductsTest extends TestCase {
 		// sale_price
 		// date_on_sale_from
 		// date_on_sale_to
+		// tax_status
 	}
 
 	public function test_can_migrate_variant_product() {
@@ -58,6 +59,7 @@ class ProductsTest extends TestCase {
 		// sale_price
 		// date_on_sale_from
 		// date_on_sale_to
+		// tax_status
 	}
 
 	public function test_preserves_featured_products() {
@@ -70,20 +72,26 @@ class ProductsTest extends TestCase {
 	}
 
 	public function test_preserves_product_terms() {
-		$product = ProductFactory::create_shipped_product();
-		$cat     = $this->factory()->term->create_and_get( [
+		$category = $this->factory()->term->create( [
 			'taxonomy' => 'shopp_category',
 		] );
-		$tag     = $this->factory()->term->create_and_get( [
+		$tag      = $this->factory()->term->create( [
 			'taxonomy' => 'shopp_tag',
 		] );
+		$product  = ProductFactory::create_shipped_product( [
+			'categories' => [
+				'terms' => [ $category ],
+			],
+			'tags'       => [
+				'terms' => [ $tag ],
+			],
+		] );
+		$created  = $this->migrate_single_product( $product );
 
-		// Assign the terms to the product.
-		wp_set_object_terms( $product->id, $category->term_id, 'shopp_category' );
-		wp_set_object_terms( $product->id, $tag->term_id, 'shopp_tag' );
+		$terms = wp_list_pluck( wp_get_object_terms( $created->get_id(), [ 'shopp_category', 'shopp_tag' ] ), 'term_id' );
 
-		$created = $this->migrate_single_product( $product );
-		$terms   = wp_get_object_terms( $created->get_id(), [ 'product_cat', 'product_tag'] );
+		$this->assertContains( $category, $terms, 'Expected the category to still be attached.' );
+		$this->assertContains( $tag, $terms, 'Expected the term to still be attached.' );
 	}
 
 	/**
@@ -163,8 +171,6 @@ class ProductsTest extends TestCase {
 			$woo->get_total_sales(),
 			'Total sales do not match.'
 		);
-		// tax_status
-		// tax_class
 		$this->assertEquals(
 			Helpers\str_to_bool( $shopp->inventory ),
 			$woo->get_manage_stock(),
@@ -203,17 +209,11 @@ class ProductsTest extends TestCase {
 			$woo->get_reviews_allowed(),
 			'The comment settings do not match.'
 		);
-		// purchase_note
 		// attributes
 		// default_attributes
 		// menu_order
-		// category_ids
-		// tag_ids
 		// shipping_class_id
 		// image_id
 		// gallery_image_ids
-		// rating_counts
-		// average_rating
-		// review_count
 	}
 }
