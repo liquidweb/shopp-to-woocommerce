@@ -12,9 +12,8 @@ use LiquidWeb\ShoppToWooCommerce\Command;
 use LiquidWeb\ShoppToWooCommerce\Helpers as Helpers;
 use ReflectionMethod;
 use Tests\Factories\ProductFactory;
-use WP_UnitTestCase;
 
-class ProductsTest extends WP_UnitTestCase {
+class ProductsTest extends TestCase {
 
 	/**
 	 * Listen for Shopp debug messages.

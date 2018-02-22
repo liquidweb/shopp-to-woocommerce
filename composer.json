@@ -16,6 +16,7 @@
             "vendor/wp-cli/wp-cli/"
         ],
         "files": [
+            "tests/testcase.php",
             "tests/utils.php",
             "tests/wp-cli-utils.php"
         ],

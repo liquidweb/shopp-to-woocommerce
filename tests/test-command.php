@@ -8,9 +8,7 @@
 
 namespace Tests;
 
-use WP_UnitTestCase;
-
-class CommandTest extends WP_UnitTestCase {
+class CommandTest extends TestCase {
 
 	/**
 	 * Verify that both Shopp and WooCommerce are installed and active.

@@ -13,9 +13,8 @@ use LiquidWeb\ShoppToWooCommerce\Helpers as Helpers;
 use ReflectionMethod;
 use Shopp;
 use Tests\Factories\ProductFactory;
-use WP_UnitTestCase;
 
-class TaxonomiesTest extends WP_UnitTestCase {
+class TaxonomiesTest extends TestCase {
 
 	/**
 	 * @dataProvider taxonomy_provider()
