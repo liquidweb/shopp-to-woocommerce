@@ -125,7 +125,21 @@ class Command extends WP_CLI_Command {
 	 *   wp shopp-to-woocommerce migrate
 	 */
 	public function migrate() {
+		WP_CLI::confirm(
+			__( 'This command will migrate Shopp categories, tags, and products to WooCommerce. Are you sure you want to proceed?', 'shopp-to-woocommerce' )
+		);
 
+		$this->migration_step( __( 'Analyzing current content:', 'shopp-to-woocommerce' ) );
+		$this->analyze();
+
+		$this->migration_step( __( 'Migrating taxonomy terms:', 'shopp-to-woocommerce' ) );
+		//$this->migrate_terms();
+
+		$this->migration_step( __( 'Migrating products:', 'shopp-to-woocommerce' ) );
+		//$this->migrate_products();
+
+		WP_CLI::line();
+		WP_CLI::success( __( 'Shopp data has been migrated successfully!', 'shopp-to-woocommerce' ) );
 	}
 
 	/**
@@ -191,6 +205,15 @@ class Command extends WP_CLI_Command {
 				$query = new WP_Query( $query_args );
 			}
 		}
+	}
+
+	/**
+	 * Helper to display a single step of the migration process.
+	 *
+	 * @param string $message The line to display.
+	 */
+	protected function migration_step( $message ) {
+		WP_CLI::log( PHP_EOL . WP_CLI::colorize( '%B' . $message . '%n' ) );
 	}
 
 	/**
