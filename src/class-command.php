@@ -240,29 +240,41 @@ class Command extends WP_CLI_Command {
 	protected function migrate_single_product( $product ) {
 		WP_CLI::debug( sprintf( 'Migrating product: %s.', $product->name ) );
 
-		// Determine the product type.
+		// Determine the product type and start populating.
 		$product_type = 'on' === $product->variants ? 'variable' : 'simple';
 		$classname    = WC_Product_Factory::get_classname_from_product_type( $product_type );
+		$props        = [
+			'name'              => $product->name,
+			'slug'              => $product->slug,
+			'date_created'      => $product->post_date_gmt,
+			'date_modified'     => $product->post_modified_gmt,
+			'featured'          => Helpers\str_to_bool( $product->featured ),
+			'description'       => $product->description,
+			'short_description' => $product->summary,
+			'gallery_image_ids' => [],
+			'attributes'        => []
+		];
 
 		// Update the post type populate the new product.
 		set_post_type( $product->id, 'product' );
 
 		// Move media into WordPress.
-		$gallery_ids = [];
-
 		foreach ( $product->images as $image ) {
 			$attachment_id = $this->sideload_image( $image, $product->id );
 
 			if ( ! has_post_thumbnail( $product->id ) ) {
 				set_post_thumbnail( $product->id, $attachment_id );
 			} else {
-				$gallery_ids[] = $attachment_id;
+				$props['gallery_image_ids'][] = $attachment_id;
 			}
 		}
 
-		// Attempt to extract product attributes.
-		$attributes = [];
+		// Handle product prices.
+		if ( 'simple' === $product_type ) {
+			$props = array_merge( $props, $this->parse_price( current( $product->prices ) ) );
+		}
 
+		// Attempt to extract product attributes.
 		foreach ( $product->specs as $spec ) {
 			$attribute = new WC_Product_Attribute();
 			$attribute->set_id( 0 );
@@ -271,20 +283,12 @@ class Command extends WP_CLI_Command {
 			$attribute->set_position( $spec->sortorder );
 			$attribute->set_visible( true );
 
-			$attributes[] = $attribute;
+			$props['attributes'][] = $attribute;
 		}
 
+		// Assemble a new WooCommerce product.
 		$new = new $classname( $product->id );
-
-		$new->set_name( $product->name );
-		$new->set_slug( $product->slug );
-		$new->set_date_created( $product->post_date_gmt );
-		$new->set_date_modified( $product->post_modified_gmt );
-		$new->set_featured( Helpers\str_to_bool( $product->featured ) );
-		$new->set_description( $product->description );
-		$new->set_short_description( $product->summary );
-		$new->set_gallery_image_ids( $gallery_ids );
-		$new->set_attributes( $attributes );
+		$new->set_props( $props );
 
 		return $new;
 	}
@@ -334,5 +338,22 @@ class Command extends WP_CLI_Command {
 		}
 
 		return $attachment_id;
+	}
+
+	/**
+	 * Given a Shopp price object, convert it into WooCommerce properties.
+	 *
+	 * @param object $price The Shopp representation of a price.
+	 *
+	 * @return array Properties that can be applied to WooCommerce products.
+	 */
+	protected function parse_price( $price ) {
+		return [
+			'price'         => Helpers\str_to_bool( $price->sale ) ? $price->saleprice : $price->price,
+			'regular_price' => $price->price,
+			'sale_price'    => $price->saleprice ? $price->saleprice : null,
+			'sku'           => $price->sku,
+			'tax_status'    => Helpers\str_to_bool( $price->tax ) ? 'taxable' : 'none',
+		];
 	}
 }

@@ -72,19 +72,33 @@ class ProductsTest extends TestCase {
 	}
 
 	public function test_can_migrate_shipped_product() {
-		$product = ProductFactory::create_shipped_product();
+		$product = ProductFactory::create_shipped_product( [
+			'single' => [
+				'type'  => 'Shipped',
+				'price' => 50,
+				'taxed' => true,
+			],
+		] );
 		$created = $this->migrate_single_product( $product );
 
 		$this->assertInstanceOf( 'WC_Product_Simple', $created, 'Expected result to be an instance of WC_Product_Simple.' );
 		$this->assert_basic_product_attributes( $product, $created );
 
-		// price
-		// regular_price
-		// sale_price
-		// date_on_sale_from
-		// date_on_sale_to
-		// tax_status
-		// weight
+		$this->assertEquals(
+			$product->prices[0]->price,
+			$created->get_price(),
+			'Expected the price to be the same.'
+		);
+		$this->assertEquals(
+			$product->prices[0]->price,
+			$created->get_regular_price(),
+			'Expected the regular price to be the same.'
+		);
+		$this->assertEquals(
+			'taxable',
+			$created->get_tax_status(),
+			'Taxable products should be marked as such.'
+		);
 	}
 
 	public function test_can_migrate_variant_product() {
@@ -95,12 +109,25 @@ class ProductsTest extends TestCase {
 		$this->assert_basic_product_attributes( $product, $created );
 
 		// price
-		// regular_price
-		// sale_price
-		// date_on_sale_from
-		// date_on_sale_to
 		// tax_status
-		// weight
+	}
+
+	public function test_can_migrate_sale_prices() {
+		$product = ProductFactory::create_shipped_product( [
+			'single' => [
+				'type'  => 'Shipped',
+				'price' => 50,
+				'taxed' => true,
+				'sale'  => [
+					'flag'  => true,
+					'price' => 40,
+				],
+			],
+		] );
+		$created = $this->migrate_single_product( $product );
+
+		$this->assertEquals( 40, $created->get_price() );
+		$this->assertEquals( 40, $created->get_sales_price() );
 	}
 
 	public function test_preserves_featured_products() {
@@ -273,9 +300,6 @@ class ProductsTest extends TestCase {
 			$woo->get_backorders(),
 			'Expected backorder status to be inherited from the Shopp store.'
 		);
-		// length
-		// width
-		// height
 		$this->assertEmpty(
 			$woo->get_upsell_ids(),
 			'Shopp doesn\'t permit upsell relationships.'
@@ -299,7 +323,6 @@ class ProductsTest extends TestCase {
 			$woo->get_menu_order(),
 			'The post menu_order should not be changed.'
 		);
-		// shipping_class_id
 		$this->assertNotEmpty(
 			$woo->get_image_id(),
 			'Expected all test products to have a featured image.'
