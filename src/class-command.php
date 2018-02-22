@@ -10,6 +10,7 @@ namespace LiquidWeb\ShoppToWooCommerce;
 
 use LiquidWeb\ShoppToWooCommerce\Helpers as Helpers;
 use ProductCollection;
+use RuntimeException;
 use ShoppProduct;
 use WC_Product;
 use WC_Product_Factory;
@@ -233,6 +234,19 @@ class Command extends WP_CLI_Command {
 		// Update the post type populate the new product.
 		set_post_type( $product->id, 'product' );
 
+		// Move media into WordPress.
+		$gallery_ids = [];
+
+		foreach ( $product->images as $image ) {
+			$attachment_id = $this->sideload_image( $image, $product->id );
+
+			if ( ! has_post_thumbnail( $product->id ) ) {
+				set_post_thumbnail( $product->id, $attachment_id );
+			} else {
+				$gallery_ids[] = $attachment_id;
+			}
+		}
+
 		$new = new $classname( $product->id );
 
 		$new->set_name( $product->name );
@@ -242,7 +256,55 @@ class Command extends WP_CLI_Command {
 		$new->set_featured( Helpers\str_to_bool( $product->featured ) );
 		$new->set_description( $product->description );
 		$new->set_short_description( $product->summary );
+		$new->set_gallery_image_ids( $gallery_ids );
 
 		return $new;
+	}
+
+	/**
+	 * Given a Shopp ImageAsset object, sideload the media into WordPress.
+	 *
+	 * @param ImageAsset $image      The Shopp image object.
+	 * @param int        $product_id The ID to which the image should be associated.
+	 *
+	 * @return int The WordPress attachment ID.
+	 */
+	protected function sideload_image( $image, $product_id ) {
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+
+		$image_url = $image->url();
+		$tmp       = download_url( $image_url );
+
+		if ( is_wp_error( $tmp ) ) {
+			throw new RuntimeException( sprintf(
+				__( 'Unable to download file from %1$s: %2$s.', 'shopp-to-woocommerce' ),
+				$image_url,
+				$tmp->get_error_message()
+			) );
+		}
+
+		$attachment_id = media_handle_sideload( [
+			'name'     => $image->filename,
+			'tmp_name' => $tmp,
+
+		], $product_id, $image->title );
+
+		if ( is_wp_error( $attachment_id ) ) {
+			@unlink( $tmp );
+			throw new RuntimeException( sprintf(
+				__( 'Unable to sideload file from %1$s: %2$s.', 'shopp-to-woocommerce' ),
+				$image_url,
+				$attachment_id->get_error_message()
+			) );
+		}
+
+		// Set additional meta data.
+		if ( ! empty( $image->alt ) ) {
+			update_post_meta( $attachment_id, '_wp_attachment_image_alt', $image->alt );
+		}
+
+		return $attachment_id;
 	}
 }

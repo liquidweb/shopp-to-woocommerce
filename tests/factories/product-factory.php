@@ -43,7 +43,13 @@ class ProductFactory {
 			],
 		] );
 
-		return shopp_add_product( $args );
+		$product = shopp_add_product( $args );
+
+		// Add an image to the product.
+		$image = DIR_TESTDATA . '/images/waffles.jpg';
+		shopp_add_product_image( $product->id, $image );
+
+		return shopp_product( $product->id );
 	}
 
 	/**

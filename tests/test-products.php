@@ -8,6 +8,7 @@
 
 namespace Tests;
 
+use ImageAsset;
 use LiquidWeb\ShoppToWooCommerce\Command;
 use LiquidWeb\ShoppToWooCommerce\Helpers as Helpers;
 use ReflectionMethod;
@@ -22,6 +23,44 @@ class ProductsTest extends TestCase {
 	 */
 	public function shopp_error_listener() {
 		add_action( 'shopp_error', 'Tests\Utils\print_shopp_error' );
+	}
+
+	/**
+	 * Enable download_url() requests to work on WordPress core test data media.
+	 *
+	 * @before
+	 */
+	public function enable_download_url() {
+		add_filter( 'pre_http_request', function ( $return, $args, $url ) {
+			parse_str( wp_parse_url( $url, PHP_URL_QUERY ), $query );
+
+			// We're not pulling an image from Shopp.
+			if ( isset( $query['siid'] ) ) {
+				return $return;
+			}
+
+			$image = new ImageAsset( $query['siid'] );
+
+			copy( DIR_TESTDATA . '/images/' . $image->filename, $args['filename'] );
+
+			return [
+				'headers'  => [],
+				'body'     => [],
+				'response' => [
+					'code' => 200,
+				],
+				'cookies'  => [],
+			];
+		}, 10, 3 );
+	}
+
+	/**
+	 * Remove uploads after each test.
+	 *
+	 * @after
+	 */
+	public function remove_uploads_on_tear_down() {
+		$this->remove_added_uploads();
 	}
 
 	public function test_product_factory() {
@@ -45,6 +84,7 @@ class ProductsTest extends TestCase {
 		// date_on_sale_from
 		// date_on_sale_to
 		// tax_status
+		// weight
 	}
 
 	public function test_can_migrate_variant_product() {
@@ -60,6 +100,7 @@ class ProductsTest extends TestCase {
 		// date_on_sale_from
 		// date_on_sale_to
 		// tax_status
+		// weight
 	}
 
 	public function test_preserves_featured_products() {
@@ -92,6 +133,26 @@ class ProductsTest extends TestCase {
 
 		$this->assertContains( $category, $terms, 'Expected the category to still be attached.' );
 		$this->assertContains( $tag, $terms, 'Expected the term to still be attached.' );
+	}
+
+	public function test_preserves_multiple_media_objects() {
+		$product = ProductFactory::create_shipped_product();
+		shopp_add_product_image( $product->id, DIR_TESTDATA . '/images/2004-07-22-DSC_0007.jpg' );
+		shopp_add_product_image( $product->id, DIR_TESTDATA . '/images/2004-07-22-DSC_0008.jpg' );
+		$product = shopp_product( $product->id );
+
+		$created = $this->migrate_single_product( $product );
+
+		$this->assertContains(
+			basename( current( $product->images )->filename, '.jpg'),
+			basename( wp_get_attachment_url( $created->get_image_id() ) ),
+			'Expected the first Shopp product image to be the post thumbnail.'
+		);
+		$this->assertCount(
+			2,
+			$created->get_gallery_image_ids(),
+			'Expected the other images to be added to the WooCommerce product gallery.'
+		);
 	}
 
 	/**
@@ -191,7 +252,6 @@ class ProductsTest extends TestCase {
 			$woo->get_backorders(),
 			'Expected backorder status to be inherited from the Shopp store.'
 		);
-		// weight
 		// length
 		// width
 		// height
@@ -203,7 +263,11 @@ class ProductsTest extends TestCase {
 			$woo->get_cross_sell_ids(),
 			'Shopp doesn\'t permit cross-sell relationships.'
 		);
-		// parent_id
+		$this->assertEquals(
+			$shopp->post_parent,
+			$woo->get_parent_id(),
+			'The post parent_id should not be changed.'
+		);
 		$this->assertEquals(
 			'open' === $shopp->comment_status,
 			$woo->get_reviews_allowed(),
@@ -211,9 +275,15 @@ class ProductsTest extends TestCase {
 		);
 		// attributes
 		// default_attributes
-		// menu_order
+		$this->assertEquals(
+			$shopp->menu_order,
+			$woo->get_menu_order(),
+			'The post menu_order should not be changed.'
+		);
 		// shipping_class_id
-		// image_id
-		// gallery_image_ids
+		$this->assertNotEmpty(
+			$woo->get_image_id(),
+			'Expected all test products to have a featured image.'
+		);
 	}
 }
