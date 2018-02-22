@@ -74,6 +74,12 @@ class Command extends WP_CLI_Command {
 
 			if ( ! empty( $product->specs ) ) {
 				$product_attributes['specs'] += count( $product->specs );
+
+				// Look for any specs that match "Height", "Width", or "Length".
+				$spec_keys = array_map( 'strtolower', array_keys( $product->specnames ) );
+				if ( $embedded_dimensions = array_intersect( [ 'height', 'width', 'length' ], $spec_keys ) ) {
+					$product_attributes['dimensions'] = count( $embedded_dimensions );
+				}
 			}
 
 			// Products with add-ons.
