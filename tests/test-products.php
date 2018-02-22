@@ -155,6 +155,27 @@ class ProductsTest extends TestCase {
 		);
 	}
 
+	public function test_can_migrate_product_attributes() {
+		$product    = ProductFactory::create_shipped_product( [
+			'specs' => [
+				'First Name' => 'George',
+				'Last Name'  => 'Harrison',
+				'Instrument' => 'Guitar',
+			],
+		] );
+		$created    = $this->migrate_single_product( $product );
+		$attributes = $created->get_attributes();
+
+		$this->assertCount( 3, $attributes, 'Expected to see three product attributes.' );
+		$this->assertEquals( [ 'first-name', 'last-name', 'instrument' ], array_keys( $attributes ) );
+		$this->assertEquals( 'First Name', $attributes['first-name']->get_name() );
+		$this->assertEquals( 'George', $attributes['first-name']->get_options() );
+		$this->assertEquals( 'Last Name', $attributes['last-name']->get_name() );
+		$this->assertEquals( 'Harrison', $attributes['last-name']->get_options() );
+		$this->assertEquals( 'Instrument', $attributes['instrument']->get_name() );
+		$this->assertEquals( 'Guitar', $attributes['instrument']->get_options() );
+	}
+
 	/**
 	 * Shortcut to execute Command::migrate_single_product() as a ReflectionMethod.
 	 *
@@ -273,8 +294,6 @@ class ProductsTest extends TestCase {
 			$woo->get_reviews_allowed(),
 			'The comment settings do not match.'
 		);
-		// attributes
-		// default_attributes
 		$this->assertEquals(
 			$shopp->menu_order,
 			$woo->get_menu_order(),

@@ -13,6 +13,7 @@ use ProductCollection;
 use RuntimeException;
 use ShoppProduct;
 use WC_Product;
+use WC_Product_Attribute;
 use WC_Product_Factory;
 use WP_CLI;
 use WP_CLI_Command;
@@ -51,6 +52,7 @@ class Command extends WP_CLI_Command {
 		$product_attributes = [
 			'addons'     => 0,
 			'dimensions' => 0,
+			'specs'      => 0,
 		];
 
 		$progress = Utils\make_progress_bar( 'Scanning Shopp products', $products->total );
@@ -68,6 +70,10 @@ class Command extends WP_CLI_Command {
 				if ( ! empty( $price->dimensions ) && 0 !== (int) $price->dimensions['weight'] ) {
 					$product_attributes['dimensions']++;
 				}
+			}
+
+			if ( ! empty( $product->specs ) ) {
+				$product_attributes['specs'] += count( $product->specs );
 			}
 
 			// Products with add-ons.
@@ -100,6 +106,7 @@ class Command extends WP_CLI_Command {
 			'Product tags'          => count( shopp_product_tags() ),
 			'Products with add-ons' => $product_attributes['addons'],
 			'Product dimensions'    => $product_attributes['dimensions'],
+			'Product specs'         => $product_attributes['specs'],
 		];
 
 		// Assemble a table of results.
@@ -247,6 +254,20 @@ class Command extends WP_CLI_Command {
 			}
 		}
 
+		// Attempt to extract product attributes.
+		$attributes = [];
+
+		foreach ( $product->specs as $spec ) {
+			$attribute = new WC_Product_Attribute();
+			$attribute->set_id( 0 );
+			$attribute->set_name( $spec->name );
+			$attribute->set_options( $spec->value );
+			$attribute->set_position( $spec->sortorder );
+			$attribute->set_visible( true );
+
+			$attributes[] = $attribute;
+		}
+
 		$new = new $classname( $product->id );
 
 		$new->set_name( $product->name );
@@ -257,6 +278,7 @@ class Command extends WP_CLI_Command {
 		$new->set_description( $product->description );
 		$new->set_short_description( $product->summary );
 		$new->set_gallery_image_ids( $gallery_ids );
+		$new->set_attributes( $attributes );
 
 		return $new;
 	}
