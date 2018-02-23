@@ -127,7 +127,7 @@ class ProductsTest extends TestCase {
 		$created = $this->migrate_single_product( $product );
 
 		$this->assertEquals( 40, $created->get_price() );
-		$this->assertEquals( 40, $created->get_sales_price() );
+		$this->assertEquals( 40, $created->get_sale_price() );
 	}
 
 	public function test_preserves_featured_products() {
