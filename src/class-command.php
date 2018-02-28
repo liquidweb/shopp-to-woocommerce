@@ -156,6 +156,38 @@ class Command extends WP_CLI_Command {
 	}
 
 	/**
+	 * Empty the trash, reducing the amount of content that needs to be moved.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *   wp shopp-to-woocommerce install-plugins
+	 *
+	 * @subcommand empty-trash
+	 */
+	public function empty_trash() {
+		$trashed = new WP_Query( array(
+			'post_type'      => 'any',
+			'post_status'    => 'trash',
+			'posts_per_page' => 1000,
+			'fields'         => 'ids',
+			'cache_results'  => false,
+		) );
+		$deleted = 0;
+
+		// Loop through trashed posts.
+		foreach ( $trashed->posts as $post_id ) {
+			if ( wp_delete_post( $post_id ) ) {
+				$deleted++;
+			}
+		}
+
+		WP_CLI::log( sprintf(
+			_n( '%1$d trashed item were permanently deleted.', '%1$d trashed items were permanently deleted.', $deleted, 'shopp-to-woocommerce' ),
+			$deleted
+		) );
+	}
+
+	/**
 	 * Migrate all content from Shopp to WooCommerce.
 	 *
 	 * This command acts as a single step for each of the other commands, using default settings.
@@ -171,6 +203,9 @@ class Command extends WP_CLI_Command {
 
 		$this->migration_step( __( 'Ensuring both Shopp and WooCommerce are installed and active:', 'shopp-to-woocommerce' ) );
 		$this->install_plugins();
+
+		$this->migration_step( __( 'Emptying trash:', 'shopp-to-woocommerce' ) );
+		$this->empty_trash();
 
 		$this->migration_step( __( 'Analyzing current content:', 'shopp-to-woocommerce' ) );
 		$this->analyze();
@@ -232,6 +267,7 @@ class Command extends WP_CLI_Command {
 			'post_status'    => 'any',
 			'posts_per_page' => 50,
 			'return'         => 'ids',
+			'cache_results'  => false,
 		);
 		$query      = new WP_Query( $query_args );
 		$counter    = 0;
