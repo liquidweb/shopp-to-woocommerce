@@ -297,7 +297,7 @@ class ProductsTest extends TestCase {
 		);
 		$this->assertEquals(
 			shopp_setting_enabled( 'backorders' ),
-			$woo->get_backorders(),
+			Helpers\str_to_bool( $woo->get_backorders() ),
 			'Expected backorder status to be inherited from the Shopp store.'
 		);
 		$this->assertEmpty(
