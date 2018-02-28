@@ -9,9 +9,9 @@
 namespace Tests;
 
 use ShoppDatabaseObject;
-use WP_UnitTestCase;
+use WC_Unit_Test_Case;
 
-class TestCase extends WP_UnitTestCase {
+class TestCase extends WC_Unit_Test_Case {
 
 	/**
 	 * Truncate Shopp database tables after each test.

@@ -15,6 +15,6 @@ class CommandTest extends TestCase {
 	 */
 	public function test_shopp_and_woocommerce_are_active() {
 		$this->assertTrue( is_plugin_active( 'shopp/Shopp.php' ), 'Shopp is not active.' );
-		$this->assertTrue( is_plugin_active( 'woocommerce/woocommerce.php' ), 'WooCommerce is not active.' );
+		$this->assertTrue( class_exists( 'WooCommerce' ), 'WooCommerce is not active.' );
 	}
 }
