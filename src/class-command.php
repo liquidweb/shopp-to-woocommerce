@@ -131,6 +131,29 @@ class Command extends WP_CLI_Command {
 	}
 
 	/**
+	 * Ensure both WooCommerce and Shopp are installed and active.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *   wp shopp-to-woocommerce install-plugins
+	 *
+	 * @subcommand install-plugins
+	 */
+	public function install_plugins() {
+		if ( is_plugin_active( 'shopp/Shopp.php' ) ) {
+			WP_CLI::log( __( 'Shopp is already active.', 'shopp-to-woocommerce' ) );
+		} else {
+			WP_CLI::runcommand( 'plugin install shopp --activate' );
+		}
+
+		if ( is_plugin_active( 'woocommerce/woocommerce.php' ) ) {
+			WP_CLI::log( __( 'WooCommerce is already active.', 'shopp-to-woocommerce' ) );
+		} else {
+			WP_CLI::runcommand( 'plugin install woocommerce --activate' );
+		}
+	}
+
+	/**
 	 * Migrate all content from Shopp to WooCommerce.
 	 *
 	 * This command acts as a single step for each of the other commands, using default settings.
@@ -144,14 +167,17 @@ class Command extends WP_CLI_Command {
 			__( 'This command will migrate Shopp categories, tags, and products to WooCommerce. Are you sure you want to proceed?', 'shopp-to-woocommerce' )
 		);
 
+		$this->migration_step( __( 'Ensuring both Shopp and WooCommerce are installed and active:', 'shopp-to-woocommerce' ) );
+		$this->install_plugins();
+
 		$this->migration_step( __( 'Analyzing current content:', 'shopp-to-woocommerce' ) );
 		$this->analyze();
 
 		$this->migration_step( __( 'Migrating taxonomy terms:', 'shopp-to-woocommerce' ) );
-		//$this->migrate_terms();
+		$this->migrate_terms();
 
 		$this->migration_step( __( 'Migrating products:', 'shopp-to-woocommerce' ) );
-		//$this->migrate_products();
+		$this->migrate_products();
 
 		WP_CLI::line();
 		WP_CLI::success( __( 'Shopp data has been migrated successfully!', 'shopp-to-woocommerce' ) );
@@ -199,8 +225,6 @@ class Command extends WP_CLI_Command {
 	 * @subcommand migrate-products
 	 */
 	public function migrate_products() {
-		WP_CLI::log( 'Migrating products:' );
-
 		$query_args = array(
 			'post_type'      => ShoppProduct::$posttype,
 			'posts_per_page' => 50,
@@ -208,18 +232,22 @@ class Command extends WP_CLI_Command {
 		);
 		$query      = new WP_Query( $query_args );
 		$counter    = 0;
+		$progress   = Utils\make_progress_bar( 'Migrating products', shopp_catalog_count() );
 
 		while ( $query->have_posts() ) {
 			$query->the_post();
 
 			$product = shopp_product( get_the_ID() );
 			$this->migrate_single_product( $product );
+			$progress->tick();
 			$counter++;
 
 			if ( 0 === $counter % $query_args['posts_per_page'] ) {
 				$query = new WP_Query( $query_args );
 			}
 		}
+
+		$progress->finish();
 	}
 
 	/**
