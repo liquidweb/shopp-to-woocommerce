@@ -102,14 +102,77 @@ class ProductsTest extends TestCase {
 	}
 
 	public function test_can_migrate_variant_product() {
-		$product = ProductFactory::create_variant_product();
-		$created = $this->migrate_single_product( $product );
+		$product = ProductFactory::create_variant_product( [
+			'variants' => [
+				'menu' => [
+					'Color' => [ 'Blue', 'Red' ],
+					'Size'  => [ 'L', 'XL' ],
+				],
+				[
+					'option' => [
+						'Color' => 'Blue',
+						'Size'  => 'L',
+					],
+					'type'     => 'Shipped',
+					'price'    => '20.01',
+					'shipping' => [ 'flag' => false ],
+				],
+				[
+					'option' => [
+						'Color' => 'Blue',
+						'Size'  => 'XL',
+					],
+					'type'     => 'Shipped',
+					'price'    => '20.02',
+					'shipping' => [ 'flag' => false ],
+				],
+				[
+					'option' => [
+						'Color' => 'Red',
+						'Size'  => 'L',
+					],
+					'type'     => 'Shipped',
+					'price'    => '20.03',
+					'shipping' => [ 'flag' => false ],
+				],
+				[
+					'option' => [
+						'Color' => 'Red',
+						'Size'  => 'XL',
+					],
+					'type'     => 'Shipped',
+					'price'    => '20.04',
+					'shipping' => [ 'flag' => false ],
+				],
+			],
+		] );
+		$created    = $this->migrate_single_product( $product );
 
 		$this->assertInstanceOf( 'WC_Product_Variable', $created, 'Expected result to be an instance of WC_Product_Variable.' );
 		$this->assert_basic_product_attributes( $product, $created );
 
-		// price
-		// tax_status
+		// Inspect the variations.
+		foreach ( $created->get_children() as $index => $variation_id ) {
+			$variation = wc_get_product( $variation_id );
+
+			$this->assertInstanceOf( 'WC_Product_Variation', $variation, 'Expected result to be an instance of WC_Product_Variation.' );
+
+			$this->assertEquals(
+				$product->prices[ $index ]->price,
+				$variation->get_price(),
+				'Expected the price to be the same.'
+			);
+			$this->assertEquals(
+				$product->prices[ $index ]->price,
+				$variation->get_regular_price(),
+				'Expected the regular price to be the same.'
+			);
+			$this->assertEquals(
+				'taxable',
+				$variation->get_tax_status(),
+				'Taxable products should be marked as such.'
+			);
+		}
 	}
 
 	public function test_can_migrate_sale_prices() {
@@ -196,11 +259,11 @@ class ProductsTest extends TestCase {
 		$this->assertCount( 3, $attributes, 'Expected to see three product attributes.' );
 		$this->assertEquals( [ 'first-name', 'last-name', 'instrument' ], array_keys( $attributes ) );
 		$this->assertEquals( 'First Name', $attributes['first-name']->get_name() );
-		$this->assertEquals( 'George', $attributes['first-name']->get_options() );
+		$this->assertEquals( [ 'George' ], $attributes['first-name']->get_options() );
 		$this->assertEquals( 'Last Name', $attributes['last-name']->get_name() );
-		$this->assertEquals( 'Harrison', $attributes['last-name']->get_options() );
+		$this->assertEquals( [ 'Harrison' ], $attributes['last-name']->get_options() );
 		$this->assertEquals( 'Instrument', $attributes['instrument']->get_name() );
-		$this->assertEquals( 'Guitar', $attributes['instrument']->get_options() );
+		$this->assertEquals( [ 'Guitar' ], $attributes['instrument']->get_options() );
 	}
 
 	/**
@@ -235,12 +298,12 @@ class ProductsTest extends TestCase {
 			$woo->get_slug(),
 			'Product slug does not match.'
 		);
-		$this->assertEquals(
+		$this->assertGreaterThanOrEqual(
 			$shopp->post_date_gmt,
 			$woo->get_date_created()->getTimestamp(),
 			'Product creation timestamp does not match.'
 		);
-		$this->assertEquals(
+		$this->assertGreaterThanOrEqual(
 			$shopp->post_modified_gmt,
 			$woo->get_date_modified()->getTimestamp(),
 			'Product modification timestamp does not match.'

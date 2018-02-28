@@ -15,6 +15,7 @@ use ShoppProduct;
 use WC_Product;
 use WC_Product_Attribute;
 use WC_Product_Factory;
+use WC_Product_Variation;
 use WP_CLI;
 use WP_CLI_Command;
 use WP_CLI\Utils as Utils;
@@ -212,7 +213,7 @@ class Command extends WP_CLI_Command {
 			$query->the_post();
 
 			$product = shopp_product( get_the_ID() );
-			$this->migrate_single_product( $product )->save();
+			$this->migrate_single_product( $product );
 			$counter++;
 
 			if ( 0 === $counter % $query_args['posts_per_page'] ) {
@@ -272,6 +273,18 @@ class Command extends WP_CLI_Command {
 		// Handle product prices.
 		if ( 'simple' === $product_type ) {
 			$props = array_merge( $props, $this->parse_price( current( $product->prices ) ) );
+
+		} else {
+			foreach ( shopp_product_variants( $product->id ) as $variant ) {
+				$price   = shopp_product_variant( $variant->id );
+				$variant = shopp_product_variant_to_item( $price );
+
+				$variation = new WC_Product_Variation();
+				$variation->set_props( $this->parse_price( $price ) );
+				$variation->set_attributes( $variant->variant );
+				$variation->set_parent_id( $product->id );
+				$variation->save();
+			}
 		}
 
 		// Attempt to extract product attributes.
@@ -279,7 +292,7 @@ class Command extends WP_CLI_Command {
 			$attribute = new WC_Product_Attribute();
 			$attribute->set_id( 0 );
 			$attribute->set_name( $spec->name );
-			$attribute->set_options( $spec->value );
+			$attribute->set_options( array( $spec->value ) );
 			$attribute->set_position( $spec->sortorder );
 			$attribute->set_visible( true );
 
@@ -289,6 +302,7 @@ class Command extends WP_CLI_Command {
 		// Assemble a new WooCommerce product.
 		$new = new $classname( $product->id );
 		$new->set_props( $props );
+		$new->save();
 
 		return $new;
 	}
