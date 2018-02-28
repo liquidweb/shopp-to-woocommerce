@@ -144,12 +144,14 @@ class Command extends WP_CLI_Command {
 			WP_CLI::log( __( 'Shopp is already active.', 'shopp-to-woocommerce' ) );
 		} else {
 			WP_CLI::runcommand( 'plugin install shopp --activate' );
+			require_once WP_PLUGIN_DIR . '/shopp/Shopp.php';
 		}
 
 		if ( is_plugin_active( 'woocommerce/woocommerce.php' ) ) {
 			WP_CLI::log( __( 'WooCommerce is already active.', 'shopp-to-woocommerce' ) );
 		} else {
 			WP_CLI::runcommand( 'plugin install woocommerce --activate' );
+			require_once WP_PLUGIN_DIR . '/woocommerce/woocommerce.php';
 		}
 	}
 
@@ -227,27 +229,24 @@ class Command extends WP_CLI_Command {
 	public function migrate_products() {
 		$query_args = array(
 			'post_type'      => ShoppProduct::$posttype,
+			'post_status'    => 'any',
 			'posts_per_page' => 50,
 			'return'         => 'ids',
 		);
 		$query      = new WP_Query( $query_args );
 		$counter    = 0;
-		$progress   = Utils\make_progress_bar( 'Migrating products', shopp_catalog_count() );
 
 		while ( $query->have_posts() ) {
 			$query->the_post();
 
 			$product = shopp_product( get_the_ID() );
 			$this->migrate_single_product( $product );
-			$progress->tick();
 			$counter++;
 
 			if ( 0 === $counter % $query_args['posts_per_page'] ) {
 				$query = new WP_Query( $query_args );
 			}
 		}
-
-		$progress->finish();
 	}
 
 	/**
@@ -267,7 +266,7 @@ class Command extends WP_CLI_Command {
 	 * @return WC_Product The newly-created WooCommerce product.
 	 */
 	protected function migrate_single_product( $product ) {
-		WP_CLI::debug( sprintf( 'Migrating product: %s.', $product->name ) );
+		WP_CLI::log( sprintf( '- Migrating product: %s.', $product->name ) );
 
 		// Determine the product type and start populating.
 		$product_type = 'on' === $product->variants ? 'variable' : 'simple';
@@ -289,7 +288,21 @@ class Command extends WP_CLI_Command {
 
 		// Move media into WordPress.
 		foreach ( $product->images as $image ) {
-			$attachment_id = $this->sideload_image( $image, $product->id );
+			try {
+				$attachment_id = $this->sideload_image( $image, $product->id );
+			} catch ( RuntimeException $e ) {
+				WP_CLI::warning( sprintf(
+					/* Translators: %1$s is the product name, %2$s is the error message. */
+					__( 'Unable to import %1$s, skipping: %2$s.', 'shopp-to-woocommerce' ),
+					$product->name,
+					$e->getMessage()
+				) );
+
+				// Restore the post type.
+				set_post_type( $product->id, ShoppProduct::$posttype );
+
+				return;
+			}
 
 			if ( ! has_post_thumbnail( $product->id ) ) {
 				set_post_thumbnail( $product->id, $attachment_id );
