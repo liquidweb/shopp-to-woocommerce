@@ -16,6 +16,7 @@ if ( ! class_exists( 'WP_CLI' ) ) {
 
 // Load command dependencies.
 require_once __DIR__ . '/src/class-command.php';
+require_once __DIR__ . '/src/class-verification-exception.php';
 require_once __DIR__ . '/src/helpers.php';
 
 WP_CLI::add_command( 'shopp-to-woocommerce', Command::class );

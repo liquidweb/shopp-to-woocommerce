@@ -82,7 +82,6 @@ class ProductsTest extends TestCase {
 		$created = $this->migrate_single_product( $product );
 
 		$this->assertInstanceOf( 'WC_Product_Simple', $created, 'Expected result to be an instance of WC_Product_Simple.' );
-		$this->assert_basic_product_attributes( $product, $created );
 
 		$this->assertEquals(
 			$product->prices[0]->price,
@@ -149,7 +148,6 @@ class ProductsTest extends TestCase {
 		$created    = $this->migrate_single_product( $product );
 
 		$this->assertInstanceOf( 'WC_Product_Variable', $created, 'Expected result to be an instance of WC_Product_Variable.' );
-		$this->assert_basic_product_attributes( $product, $created );
 
 		// Inspect the variations.
 		foreach ( $created->get_children() as $index => $variation_id ) {
@@ -279,116 +277,5 @@ class ProductsTest extends TestCase {
 		$method->setAccessible( true );
 
 		return $method->invoke( $command, $product );
-	}
-
-	/**
-	 * Compare fields that aren't specific to the product type, like "name", "description", etc.
-	 *
-	 * @param ShoppProduct $shopp The Shopp representation of the product.
-	 * @param WC_Product   $woo   The WooCommerce version of the product.
-	 */
-	protected function assert_basic_product_attributes( $shopp, $woo ) {
-		$this->assertEquals(
-			$shopp->name,
-			$woo->get_name(),
-			'Product name does not match.'
-		);
-		$this->assertEquals(
-			$shopp->slug,
-			$woo->get_slug(),
-			'Product slug does not match.'
-		);
-		$this->assertGreaterThanOrEqual(
-			$shopp->post_date_gmt,
-			$woo->get_date_created()->getTimestamp(),
-			'Product creation timestamp does not match.'
-		);
-		$this->assertGreaterThanOrEqual(
-			$shopp->post_modified_gmt,
-			$woo->get_date_modified()->getTimestamp(),
-			'Product modification timestamp does not match.'
-		);
-		$this->assertEquals(
-			$shopp->status,
-			get_post_status( $woo->get_id() ),
-			'The post status should not change.'
-		);
-		$this->assertEquals(
-			Helpers\str_to_bool( $shopp->featured ),
-			$woo->get_featured(),
-			'Product featured status does not match.'
-		);
-		$this->assertEquals(
-			'visible',
-			$woo->get_catalog_visibility(),
-			'Shopp doesn\'t have the concept of hidden products, so this should be "visible".'
-		);
-		$this->assertEquals(
-			$shopp->description,
-			$woo->get_description(),
-			'Product description does not match.'
-		);
-		$this->assertEquals(
-			$shopp->summary,
-			$woo->get_short_description(),
-			'Product short description does not match.'
-		);
-		$this->assertEquals(
-			$shopp->sku,
-			$woo->get_sku(),
-			'Product SKU does not match.'
-		);
-		$this->assertEquals(
-			$shopp->sold,
-			$woo->get_total_sales(),
-			'Total sales do not match.'
-		);
-		$this->assertEquals(
-			Helpers\str_to_bool( $shopp->inventory ),
-			$woo->get_manage_stock(),
-			'The inventory management settings do not match.'
-		);
-		$this->assertEquals(
-			$shopp->stock,
-			$woo->get_stock_quantity(),
-			'The stock does not match.'
-		);
-		$this->assertEquals(
-			$shopp->outofstock,
-			'instock' !== $woo->get_stock_status(),
-			'The stock status does not match.'
-		);
-		$this->assertEquals(
-			shopp_setting_enabled( 'backorders' ),
-			Helpers\str_to_bool( $woo->get_backorders() ),
-			'Expected backorder status to be inherited from the Shopp store.'
-		);
-		$this->assertEmpty(
-			$woo->get_upsell_ids(),
-			'Shopp doesn\'t permit upsell relationships.'
-		);
-		$this->assertEmpty(
-			$woo->get_cross_sell_ids(),
-			'Shopp doesn\'t permit cross-sell relationships.'
-		);
-		$this->assertEquals(
-			$shopp->post_parent,
-			$woo->get_parent_id(),
-			'The post parent_id should not be changed.'
-		);
-		$this->assertEquals(
-			'open' === $shopp->comment_status,
-			$woo->get_reviews_allowed(),
-			'The comment settings do not match.'
-		);
-		$this->assertEquals(
-			$shopp->menu_order,
-			$woo->get_menu_order(),
-			'The post menu_order should not be changed.'
-		);
-		$this->assertNotEmpty(
-			$woo->get_image_id(),
-			'Expected all test products to have a featured image.'
-		);
 	}
 }

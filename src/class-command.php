@@ -268,20 +268,33 @@ class Command extends WP_CLI_Command {
 			'posts_per_page' => 50,
 			'return'         => 'ids',
 			'cache_results'  => false,
+			'post__not_in'   => [],
 		);
 		$query      = new WP_Query( $query_args );
 		$counter    = 0;
+		$failures   = 0;
 
 		while ( $query->have_posts() ) {
 			$query->the_post();
 
 			$product = shopp_product( get_the_ID() );
-			$this->migrate_single_product( $product );
+			if ( ! $this->migrate_single_product( $product ) ) {
+				$query_args['post__not_in'][] = get_the_ID();
+				$failures++;
+			}
 			$counter++;
 
 			if ( 0 === $counter % $query_args['posts_per_page'] ) {
 				$query = new WP_Query( $query_args );
 			}
+		}
+
+		if ( $failures ) {
+			WP_CLI::line();
+			WP_CLI::warning( sprintf(
+				_n( '%1$d product had errors.', '%1$d products had errors.', $failures, 'shopp-to-woocommerce' ),
+				$failures
+			) );
 		}
 	}
 
@@ -316,7 +329,8 @@ class Command extends WP_CLI_Command {
 			'description'       => $product->description,
 			'short_description' => $product->summary,
 			'gallery_image_ids' => [],
-			'attributes'        => []
+			'attributes'        => [],
+			'total_sales'       => $product->sold,
 		];
 
 		// Update the post type populate the new product.
@@ -337,7 +351,7 @@ class Command extends WP_CLI_Command {
 				// Restore the post type.
 				set_post_type( $product->id, ShoppProduct::$posttype );
 
-				return;
+				return false;
 			}
 
 			if ( ! has_post_thumbnail( $product->id ) ) {
@@ -379,9 +393,189 @@ class Command extends WP_CLI_Command {
 		// Assemble a new WooCommerce product.
 		$new = new $classname( $product->id );
 		$new->set_props( $props );
+
+		// Verify the migration.
+		try {
+			$this->verify( $product, $new );
+
+		} catch ( VerificationException $e ) {
+			WP_CLI::warning( sprintf(
+				/* Translators: %1$s is the product name, %2$s is the error message. */
+				__( 'Verification of "%1$s" failed: %2$s', 'shopp-to-woocommerce' ),
+				$product->name,
+				$e->getMessage()
+			) );
+
+			// Remove the variations.
+			foreach ( $new->get_children() as $variation_id ) {
+				wp_delete_post( $variation_id, true );
+			}
+
+			// Restore the post type.
+			set_post_type( $product->id, ShoppProduct::$posttype );
+
+			return false;
+		}
+
 		$new->save();
 
 		return $new;
+	}
+
+	/**
+	 * Given a Shopp product and a WooCommerce product, ensure the two match.
+	 *
+	 * @throws VerificationException If the two products don't match.
+	 *
+	 * @param ShoppProduct $shopp The Shopp representation of the product.
+	 * @param WC_Product   $woo   The newly-created WooCommerce product.
+	 */
+	protected function verify( $shopp, $woo ) {
+		$this->assertEquals(
+			$shopp->name,
+			$woo->get_name(),
+			'Product name does not match.'
+		);
+		$this->assertEquals(
+			$shopp->slug,
+			$woo->get_slug(),
+			'Product slug does not match.'
+		);
+		$this->assertTrue(
+			$shopp->post_modified_gmt <= $woo->get_date_modified()->getTimestamp(),
+			'Product modification timestamp does not match.'
+		);
+		$this->assertEquals(
+			$shopp->status,
+			get_post_status( $woo->get_id() ),
+			'The post status should not change.'
+		);
+		$this->assertEquals(
+			Helpers\str_to_bool( $shopp->featured ),
+			$woo->get_featured(),
+			'Product featured status does not match.'
+		);
+		$this->assertEquals(
+			'visible',
+			$woo->get_catalog_visibility(),
+			'Shopp doesn\'t have the concept of hidden products, so this should be "visible".'
+		);
+		$this->assertEquals(
+			$shopp->description,
+			$woo->get_description(),
+			'Product description does not match.'
+		);
+		$this->assertEquals(
+			$shopp->summary,
+			$woo->get_short_description(),
+			'Product short description does not match.'
+		);
+		$this->assertEquals(
+			$shopp->sku,
+			$woo->get_sku(),
+			'Product SKU does not match.'
+		);
+		$this->assertEquals(
+			$shopp->sold,
+			$woo->get_total_sales(),
+			'Total sales do not match.'
+		);
+		$this->assertEquals(
+			Helpers\str_to_bool( $shopp->inventory ),
+			$woo->get_manage_stock(),
+			'The inventory management settings do not match.'
+		);
+		$this->assertEquals(
+			$shopp->stock,
+			$woo->get_stock_quantity(),
+			'The stock does not match.'
+		);
+		$this->assertEquals(
+			$shopp->outofstock,
+			'instock' !== $woo->get_stock_status(),
+			'The stock status does not match.'
+		);
+		$this->assertEquals(
+			shopp_setting_enabled( 'backorders' ),
+			Helpers\str_to_bool( $woo->get_backorders() ),
+			'Expected backorder status to be inherited from the Shopp store.'
+		);
+		$this->assertTrue(
+			empty( $woo->get_upsell_ids() ),
+			'Shopp doesn\'t permit upsell relationships.'
+		);
+		$this->assertTrue(
+			empty( $woo->get_cross_sell_ids() ),
+			'Shopp doesn\'t permit cross-sell relationships.'
+		);
+		$this->assertEquals(
+			$shopp->post_parent,
+			$woo->get_parent_id(),
+			'The post parent_id should not be changed.'
+		);
+		$this->assertEquals(
+			'open' === $shopp->comment_status,
+			$woo->get_reviews_allowed(),
+			'The comment settings do not match.'
+		);
+		$this->assertEquals(
+			$shopp->menu_order,
+			$woo->get_menu_order(),
+			'The post menu_order should not be changed.'
+		);
+
+		// Only worry about post date for published products.
+		if ( 'publish' === get_post_status( $woo->get_id() ) ) {
+			$this->assertTrue(
+				$shopp->post_date_gmt <= $woo->get_date_created()->getTimestamp(),
+				'Product creation timestamp does not match.'
+			);
+		}
+
+		// Only check for post thumbnails if the product had an image to begin with.
+		if ( ! empty( $product->images ) ) {
+			$this->assertTrue(
+				! empty( $woo->get_image_id() ),
+				'Expected all products to have a featured image.'
+			);
+		}
+
+		WP_CLI::debug( sprintf(
+			/* Translators: %1$s is the product name. */
+			__( 'Product "%1$s" passed verification checks.', 'shopp-to-woocommerce' ),
+			$shopp->name
+		) );
+	}
+
+	/**
+	 * Assert that a statement evaluates as true, or throw an exception.
+	 *
+	 * This may or may not be a nice way to recycle PHPUnit tests.
+	 *
+	 * @throws VerificationException If the statement does not evaluate as true.
+	 *
+	 * @param bool   $statement The evaluated statement.
+	 * @param string $message   Optional. The exception message if the values do not match.
+	 *                          Default is empty.
+	 */
+	protected function assertTrue( $statement, $message = '' ) {
+		if ( true !== $statement ) {
+			throw new VerificationException( $message );
+		}
+	}
+
+	/**
+	 * Assert two values are equal, or throw an exception.
+	 *
+	 * @throws VerificationException If $actual does not equal $expected.
+	 *
+	 * @param mixed  $expected The expected value.
+	 * @param mixed  $actual   The actual value.
+	 * @param string $message  Optional. The exception message if the values do not match.
+	 *                         Default is empty.
+	 */
+	protected function assertEquals( $expected, $actual, $message = '' ) {
+		$this->assertTrue( $expected == $actual, $message );
 	}
 
 	/**
