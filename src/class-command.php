@@ -321,20 +321,20 @@ class Command extends WP_CLI_Command {
 		$product_type = 'on' === $product->variants ? 'variable' : 'simple';
 		$classname    = WC_Product_Factory::get_classname_from_product_type( $product_type );
 		$props        = [
-			'name'              => $product->name,
-			'slug'              => $product->slug,
-			'date_created'      => $product->post_date_gmt,
-			'date_modified'     => $product->post_modified_gmt,
-			'featured'          => Helpers\str_to_bool( $product->featured ),
-			'description'       => $product->description,
-			'short_description' => $product->summary,
-			'gallery_image_ids' => [],
-			'attributes'        => [],
-			'total_sales'       => $product->sold,
+			'name'               => $product->name,
+			'slug'               => $product->slug,
+			'date_created'       => $product->post_date_gmt,
+			'date_modified'      => $product->post_modified_gmt,
+			'featured'           => Helpers\str_to_bool( $product->featured ),
+			'description'        => $product->description,
+			'short_description'  => $product->summary,
+			'image_id'           => null,
+			'gallery_image_ids'  => [],
+			'attributes'         => [],
+			'default_attributes' => [],
+			'total_sales'        => $product->sold,
 		];
-
-		// Update the post type populate the new product.
-		set_post_type( $product->id, 'product' );
+		$variants     = [];
 
 		// Move media into WordPress.
 		foreach ( $product->images as $image ) {
@@ -354,8 +354,8 @@ class Command extends WP_CLI_Command {
 				return false;
 			}
 
-			if ( ! has_post_thumbnail( $product->id ) ) {
-				set_post_thumbnail( $product->id, $attachment_id );
+			if ( empty( $props['image_id'] ) ) {
+				$props['image_id'] = $attachment_id;
 			} else {
 				$props['gallery_image_ids'][] = $attachment_id;
 			}
@@ -366,15 +366,32 @@ class Command extends WP_CLI_Command {
 			$props = array_merge( $props, $this->parse_price( current( $product->prices ) ) );
 
 		} else {
+			foreach ( shopp_product_variant_options( $product->id ) as $label => $values ) {
+				$attribute = new WC_Product_Attribute();
+				$attribute->set_id( 0 );
+				$attribute->set_name( $label );
+				$attribute->set_options( (array) $values );
+				$attribute->set_visible( true );
+				$attribute->set_variation( true );
+
+				$props['attributes'][] = $attribute;
+				$props['default_attributes'][ sanitize_title( $label ) ] = current( $values );
+			}
+
 			foreach ( shopp_product_variants( $product->id ) as $variant ) {
 				$price   = shopp_product_variant( $variant->id );
 				$variant = shopp_product_variant_to_item( $price );
+				$attributes = array_combine(
+					array_map( 'sanitize_title', array_keys( $variant->variant ) ),
+					array_values( $variant->variant )
+				);
 
 				$variation = new WC_Product_Variation();
 				$variation->set_props( $this->parse_price( $price ) );
-				$variation->set_attributes( $variant->variant );
+				$variation->set_attributes( $attributes );
 				$variation->set_parent_id( $product->id );
-				$variation->save();
+
+				$variants[] = $variation;
 			}
 		}
 
@@ -390,9 +407,20 @@ class Command extends WP_CLI_Command {
 			$props['attributes'][] = $attribute;
 		}
 
+		// Update the post type populate the new product.
+		set_post_type( $product->id, 'product' );
+
+		// Save the variants.
+		if ( ! empty( $variants ) ) {
+			array_walk( $variants, function ( $variant ) {
+				$variant->save();
+			} );
+		}
+
 		// Assemble a new WooCommerce product.
 		$new = new $classname( $product->id );
 		$new->set_props( $props );
+		$new->save();
 
 		// Verify the migration.
 		try {
@@ -416,8 +444,6 @@ class Command extends WP_CLI_Command {
 
 			return false;
 		}
-
-		$new->save();
 
 		return $new;
 	}

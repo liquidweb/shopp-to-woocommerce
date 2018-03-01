@@ -102,6 +102,9 @@ class ProductsTest extends TestCase {
 
 	public function test_can_migrate_variant_product() {
 		$product = ProductFactory::create_variant_product( [
+			'specs'    => [
+				'Some spec' => 'Some spec value',
+			],
 			'variants' => [
 				'menu' => [
 					'Color' => [ 'Blue', 'Red' ],
@@ -146,8 +149,23 @@ class ProductsTest extends TestCase {
 			],
 		] );
 		$created    = $this->migrate_single_product( $product );
+		$attributes = $created->get_attributes();
 
 		$this->assertInstanceOf( 'WC_Product_Variable', $created, 'Expected result to be an instance of WC_Product_Variable.' );
+		$this->assertCount( 3, $attributes, 'Expected to see three attributes.' );
+
+		foreach ( $attributes as $attr ) {
+			if ( 'Some spec' === $attr->get_name() ) {
+				$this->assertEquals( [ 'Some spec value' ], $attr->get_options() );
+				$this->assertFalse( $attr->get_variation() );
+			} elseif ( 'Color' === $attr->get_name() ) {
+				$this->assertEquals( [ 'Blue', 'Red' ], $attr->get_options() );
+				$this->assertTrue( $attr->get_variation() );
+			} else {
+				$this->assertEquals( [ 'L', 'XL' ], $attr->get_options() );
+				$this->assertTrue( $attr->get_variation() );
+			}
+		}
 
 		// Inspect the variations.
 		foreach ( $created->get_children() as $index => $variation_id ) {
