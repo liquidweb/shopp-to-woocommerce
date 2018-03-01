@@ -323,6 +323,7 @@ class Command extends WP_CLI_Command {
 		$props        = [
 			'name'               => $product->name,
 			'slug'               => $product->slug,
+			'product_type'       => $product_type,
 			'date_created'       => $product->post_date_gmt,
 			'date_modified'      => $product->post_modified_gmt,
 			'featured'           => Helpers\str_to_bool( $product->featured ),
