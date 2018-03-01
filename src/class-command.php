@@ -140,19 +140,20 @@ class Command extends WP_CLI_Command {
 	 * @subcommand install-plugins
 	 */
 	public function install_plugins() {
-		if ( is_plugin_active( 'shopp/Shopp.php' ) ) {
-			WP_CLI::log( __( 'Shopp is already active.', 'shopp-to-woocommerce' ) );
-		} else {
-			WP_CLI::runcommand( 'plugin install shopp --activate' );
-			require_once WP_PLUGIN_DIR . '/shopp/Shopp.php';
+		if ( is_plugin_active( 'shopp/Shopp.php' ) && is_plugin_active( 'woocommerce/woocommerce.php' ) ) {
+			return WP_CLI::log( __( 'Shopp and WooCommerce are already active.', 'shopp-to-woocommerce' ) );
 		}
 
-		if ( is_plugin_active( 'woocommerce/woocommerce.php' ) ) {
-			WP_CLI::log( __( 'WooCommerce is already active.', 'shopp-to-woocommerce' ) );
-		} else {
-			WP_CLI::runcommand( 'plugin install woocommerce --activate' );
-			require_once WP_PLUGIN_DIR . '/woocommerce/woocommerce.php';
-		}
+		WP_CLI::debug( __( 'Installing necessary plugins.', 'shopp-to-woocommerce' ) );
+		WP_CLI::runcommand( 'plugin install shopp woocommerce --activate' );
+
+		$this->migration_step( sprintf(
+			/* Translators: %1$s is the WordPress admin URL. */
+			__( 'Shopp and/or WooCommerce have been installed, but should be configured before running the migration: %1$s', 'shopp-to-woocommerce' ),
+			admin_url( '/' )
+		) );
+
+		WP_CLI::halt( 1 );
 	}
 
 	/**
