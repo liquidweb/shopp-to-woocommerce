@@ -36,6 +36,9 @@ class Command extends WP_CLI_Command {
 	public function analyze() {
 		global $wpdb;
 
+		// Ensure Shopp has been loaded, since it can be finicky.
+		require_once WP_PLUGIN_DIR . '/shopp/Shopp';
+
 		$products = new ProductCollection();
 		$products->load( [
 			'published' => false,
