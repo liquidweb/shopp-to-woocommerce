@@ -15,6 +15,7 @@ use ShoppProduct;
 use WC_Product;
 use WC_Product_Attribute;
 use WC_Product_Factory;
+use WC_Product_Variable;
 use WC_Product_Variation;
 use WP_CLI;
 use WP_CLI_Command;
@@ -569,6 +570,14 @@ class Command extends WP_CLI_Command {
 			$this->assertTrue(
 				! empty( $woo->get_image_id() ),
 				'Expected all products to have a featured image.'
+			);
+		}
+
+		// Ensure that variable products are treated as such.
+		if ( ! empty( $woo->get_children() ) ) {
+			$this->assertTrue(
+				$woo instanceof WC_Product_Variable,
+				'Expected variable products to be flagged as such.'
 			);
 		}
 
