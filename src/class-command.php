@@ -209,6 +209,7 @@ class Command extends WP_CLI_Command {
 		// Explicitly load Shopp and WooCommerce
 		require_once WP_PLUGIN_DIR . '/shopp/Shopp.php';
 		require_once WP_PLUGIN_DIR . '/woocommerce/woocommerce.php';
+		do_action( 'init' );
 
 		// Temporarily disable taxes to prevent Shopp from creating dummy cart items.
 		WP_CLI::debug( __( 'Adjusting tax settings.', 'shopp-to-woocommerce' ) );
