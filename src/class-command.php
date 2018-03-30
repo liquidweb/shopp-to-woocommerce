@@ -207,6 +207,11 @@ class Command extends WP_CLI_Command {
 			__( 'This command will migrate Shopp categories, tags, and products to WooCommerce. Are you sure you want to proceed?', 'shopp-to-woocommerce' )
 		);
 
+		// Temporarily disable taxes to prevent Shopp from creating dummy cart items.
+		WP_CLI::debug( __( 'Adjusting tax settings.', 'shopp-to-woocommerce' ) );
+		$tax_setting = shopp_setting('taxes');
+		shopp_set_setting( 'taxes', false );
+
 		$this->migration_step( __( 'Ensuring both Shopp and WooCommerce are installed and active:', 'shopp-to-woocommerce' ) );
 		$this->install_plugins();
 
@@ -221,6 +226,10 @@ class Command extends WP_CLI_Command {
 
 		$this->migration_step( __( 'Migrating products:', 'shopp-to-woocommerce' ) );
 		$this->migrate_products();
+
+		// Restore the tax setings.
+		WP_CLI::debug( __( 'Restoring tax settings', 'shopp-to-woocommerce' ) );
+		shopp_set_setting( 'taxes', false );
 
 		WP_CLI::line();
 		WP_CLI::success( __( 'Shopp data has been migrated successfully!', 'shopp-to-woocommerce' ) );
