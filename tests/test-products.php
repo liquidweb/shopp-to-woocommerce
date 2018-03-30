@@ -98,6 +98,10 @@ class ProductsTest extends TestCase {
 			$created->get_tax_status(),
 			'Taxable products should be marked as such.'
 		);
+		$this->assertEquals(
+			'simple',
+			get_the_terms( $created->get_id(), 'product_type' )[0]->slug
+		);
 	}
 
 	public function test_can_migrate_variant_product() {
@@ -152,6 +156,10 @@ class ProductsTest extends TestCase {
 		$attributes = $created->get_attributes();
 
 		$this->assertInstanceOf( 'WC_Product_Variable', $created, 'Expected result to be an instance of WC_Product_Variable.' );
+		$this->assertEquals(
+			'variable',
+			get_the_terms( $created->get_id(), 'product_type' )[0]->slug
+		);
 		$this->assertCount( 3, $attributes, 'Expected to see three attributes.' );
 
 		foreach ( $attributes as $attr ) {

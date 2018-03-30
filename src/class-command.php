@@ -439,6 +439,11 @@ class Command extends WP_CLI_Command {
 		$new->set_props( $props );
 		$new->save();
 
+		// Explicitly set the product_type taxonomy terms.
+		if ( false === get_the_terms( $product->id, 'product_type' ) ) {
+			wp_set_object_terms( $product->id, $product_type, 'product_type' );
+		}
+
 		// Verify the migration.
 		try {
 			$this->verify( $product, $new );
