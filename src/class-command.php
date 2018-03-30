@@ -330,12 +330,13 @@ class Command extends WP_CLI_Command {
 	 * @return WC_Product The newly-created WooCommerce product.
 	 */
 	protected function migrate_single_product( $product ) {
-		WP_CLI::log( sprintf( '- Migrating product: %s.', $product->name ) );
+		$product_type = 'on' === $product->variants ? 'variable' : 'simple';
+
+		WP_CLI::log( sprintf( '- Migrating %s product: %s.', $product_type, $product->name ) );
 
 		// Determine the product type and start populating.
-		$product_type = 'on' === $product->variants ? 'variable' : 'simple';
-		$classname    = WC_Product_Factory::get_classname_from_product_type( $product_type );
-		$props        = [
+		$classname = WC_Product_Factory::get_classname_from_product_type( $product_type );
+		$props     = [
 			'name'               => $product->name,
 			'slug'               => $product->slug,
 			'product_type'       => $product_type,
@@ -350,7 +351,7 @@ class Command extends WP_CLI_Command {
 			'default_attributes' => [],
 			'total_sales'        => $product->sold,
 		];
-		$variants     = [];
+		$variants  = [];
 
 		// Move media into WordPress.
 		foreach ( $product->images as $image ) {
