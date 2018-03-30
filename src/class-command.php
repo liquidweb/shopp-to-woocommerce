@@ -37,10 +37,6 @@ class Command extends WP_CLI_Command {
 	public function analyze() {
 		global $wpdb;
 
-		// Explicitly load Shopp and WooCommerce
-		require_once WP_PLUGIN_DIR . '/shopp/Shopp.php';
-		require_once WP_PLUGIN_DIR . '/woocommerce/woocommerce.php';
-
 		$products = new ProductCollection();
 		$products->load( [
 			'published' => false,
@@ -210,9 +206,13 @@ class Command extends WP_CLI_Command {
 		$this->migration_step( __( 'Ensuring both Shopp and WooCommerce are installed and active:', 'shopp-to-woocommerce' ) );
 		$this->install_plugins();
 
+		// Explicitly load Shopp and WooCommerce
+		require_once WP_PLUGIN_DIR . '/shopp/Shopp.php';
+		require_once WP_PLUGIN_DIR . '/woocommerce/woocommerce.php';
+
 		// Temporarily disable taxes to prevent Shopp from creating dummy cart items.
 		WP_CLI::debug( __( 'Adjusting tax settings.', 'shopp-to-woocommerce' ) );
-		$tax_setting = shopp_setting('taxes');
+		$tax_setting = shopp_setting( 'taxes' );
 		shopp_set_setting( 'taxes', false );
 
 		$this->migration_step( __( 'Emptying trash:', 'shopp-to-woocommerce' ) );
