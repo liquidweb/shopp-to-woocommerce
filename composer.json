@@ -4,7 +4,20 @@
     "type": "wp-cli-package",
     "homepage": "https://github.com/liquidweb/shopp-to-woocommerce",
     "license": "MIT",
-    "authors": [],
+    "authors": [
+        {
+            "name": "Liquid Web",
+            "homepage": "https://www.liquidweb.com"
+        },
+        {
+            "name": "Steve Grunwell",
+            "homepage": "https://stevegrunwell.com"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/liquidweb/shopp-to-woocommerce/issues",
+        "source": "https://github.com/liquidweb/shopp-to-woocommerce"
+    },
     "minimum-stability": "dev",
     "prefer-stable": true,
     "autoload": {
