@@ -1,6 +1,6 @@
 # Shopp to WooCommerce Migrations
 
-WP-CLI package for migrating Shopp sites into WooCommerce.
+This WP-CLI package is designed to migrate product catalogs from [Shopp](https://shopplugin.net/) into [WooCommerce](http://woocommerce.com/).
 
 [![Build Status](https://travis-ci.org/liquidweb/shopp-to-woocommerce.svg?branch=develop)](https://travis-ci.org/liquidweb/shopp-to-woocommerce)
 
@@ -15,6 +15,16 @@ To migrate products and taxonomy terms from Shopp to WooCommerce:
 ```sh
 $ wp shopp-to-woocommerce migrate
 ```
+
+The `migrate` command is an all-in-one process, which will perform the following tasks:
+
+1. Ensure both Shopp and WooCommerce are installed and active
+2. Empty WordPress' trash, ensuring cycles aren't wasted moving deleted content.
+3. Analyze the site content to determine what requires migration.
+4. Migrate Shopp taxonomy terms (categories and tags) into WooCommerce taxonomies.
+5. Migrate the product catalog, including images, variants, and more!
+
+Each of these steps are also available to run individually, if necessary. Please run `wp shopp-to-woocommerce --help` to see a list of all available commands.
 
 ## Installing
 
